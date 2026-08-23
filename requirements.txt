@@ -1,0 +1,10 @@
+asgiref==3.12.1
+Django==6.1
+graphviz==0.21
+iniconfig==2.3.0
+packaging==26.3
+pluggy==1.6.0
+ply==3.11
+Pygments==2.21.0
+pytest==9.1.1
+sqlparse==0.6.0
