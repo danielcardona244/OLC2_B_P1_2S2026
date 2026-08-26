@@ -277,4 +277,47 @@ class TestSymbolTable:
         assert symbols[1].nombre == 'x'
         assert symbols[1].ambito == 'main'
 
-        
+    def test_shadowing_en_mismo_scope_es_valido_si_se_permite(self):
+        errors = ErrorList()
+
+        env = Environment(
+            nombre='main',
+            errors=errors
+        )
+
+        primero = Symbol(
+            nombre='x',
+            tipo='i32',
+            categoria='variable',
+            linea=1,
+            columna=5
+        )
+
+        segundo = Symbol(
+            nombre='x',
+            tipo='f64',
+            categoria='variable',
+            linea=2,
+            columna=5
+        )
+
+        assert env.define(
+            primero,
+            allow_shadowing=True
+        ) is True
+
+        assert env.define(
+            segundo,
+            allow_shadowing=True
+        ) is True
+
+        # La declaración más reciente es la visible.
+        assert env.lookup('x') is segundo
+        assert env.lookup('x').tipo == 'f64'
+
+        # Pero la tabla conserva las dos.
+        symbols = env.symbol_table.get_all()
+
+        assert len(symbols) == 2
+
+        assert not errors.has_errors()

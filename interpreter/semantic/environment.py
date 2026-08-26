@@ -22,15 +22,18 @@ class Environment:
         else:
             self.symbol_table = symbol_table
 
-    def define(self, symbol, fragmento=''):
+
+    def define(self, symbol, fragmento='', allow_shadowing=False):
         """
         Declara un símbolo en el ámbito actual.
 
-        No permite redeclaraciones dentro del mismo ámbito.
-        Sí permite shadowing en ámbitos hijos.
+        Por defecto no permite duplicados.
+        Las variables pueden habilitar shadowing explícitamente.
         """
 
-        if symbol.nombre in self.symbols:
+        existe = symbol.nombre in self.symbols
+
+        if existe and not allow_shadowing:
 
             if self.errors is not None:
                 self.errors.add(
@@ -48,14 +51,20 @@ class Environment:
 
         symbol.ambito = self.nombre
 
+        # Si hay shadowing, la nueva declaración pasa a ser
+        # la visible en este entorno.
         self.symbols[symbol.nombre] = symbol
+
+        # La tabla histórica conserva ambas declaraciones.
         self.symbol_table.add(symbol)
 
         return True
 
+
     def lookup_local(self, nombre):
         """Busca únicamente en el ámbito actual."""
         return self.symbols.get(nombre)
+
 
     def lookup(self, nombre):
         """
@@ -73,6 +82,7 @@ class Environment:
             actual = actual.padre
 
         return None
+
 
     def create_child(self, nombre):
         """Crea un ámbito hijo que comparte errores y tabla de símbolos."""
