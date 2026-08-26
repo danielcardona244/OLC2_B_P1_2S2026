@@ -276,3 +276,5 @@ class TestSymbolTable:
 
         assert symbols[1].nombre == 'x'
         assert symbols[1].ambito == 'main'
+
+        
