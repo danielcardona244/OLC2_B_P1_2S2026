@@ -543,3 +543,740 @@ class TestVariables:
             analyzer.global_env.lookup_local('local')
             is None
         )
+
+
+class TestExpressionTypes:
+
+    def test_operadores_numericos_i32(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let suma = 10 + 2; '
+            'let resta = 10 - 2; '
+            'let mult = 10 * 2; '
+            'let div = 10 / 2; '
+            'let mod = 10 % 3; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        env = analyzer.function_envs['main']
+
+        assert env.lookup('suma').tipo == 'i32'
+        assert env.lookup('resta').tipo == 'i32'
+        assert env.lookup('mult').tipo == 'i32'
+        assert env.lookup('div').tipo == 'i32'
+        assert env.lookup('mod').tipo == 'i32'
+
+
+    def test_promocion_i32_f64(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let resultado = 10 + 2.5; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'f64'
+
+
+    def test_suma_string(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let resultado = "Hola " + "Mundo"; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'String'
+
+
+    def test_multiplicacion_string_i32(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let resultado = "ha" * 3; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'String'
+
+
+    def test_multiplicacion_i32_string(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let resultado = 3 * "ha"; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'String'
+
+
+    def test_aritmetica_incompatible_genera_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = 10 + "hola"; '
+            '}'
+        )
+
+        semantic_errors = [
+            error
+            for error in errors.get_all()
+            if error.tipo == 'Semántico'
+        ]
+
+        assert len(semantic_errors) >= 1
+
+        assert any(
+            '+' in error.descripcion
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in semantic_errors
+        )
+
+
+    def test_menos_unario_numerico(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = -10; '
+            'let y = -3.14; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        env = analyzer.function_envs['main']
+
+        assert env.lookup('x').tipo == 'i32'
+        assert env.lookup('y').tipo == 'f64'
+
+
+    def test_menos_unario_invalido(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = -true; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '-' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_comparacion_devuelve_bool(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = 10 > 5; '
+            'let y = 10 == 10.0; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        env = analyzer.function_envs['main']
+
+        assert env.lookup('x').tipo == 'bool'
+        assert env.lookup('y').tipo == 'bool'
+
+
+    def test_comparacion_incompatible(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = true > 10; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '>' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_and_or_booleanos(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = true && false; '
+            'let y = true || false; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        env = analyzer.function_envs['main']
+
+        assert env.lookup('x').tipo == 'bool'
+        assert env.lookup('y').tipo == 'bool'
+
+
+    def test_logico_binario_incompatible(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = true && 10; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '&&' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_not_booleano(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = !true; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        x = analyzer.function_envs[
+            'main'
+        ].lookup('x')
+
+        assert x.tipo == 'bool'
+
+
+    def test_not_invalido(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = !10; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '!' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestUndeclaredIdentifiers:
+
+    def test_variable_no_declarada_en_inicializacion(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = noExiste + 1; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'noExiste' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_variable_no_declarada_en_println(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'println!(noExiste); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'noExiste' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestControlConditions:
+
+    def test_if_condicion_bool_valida(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'if 10 > 5 { '
+            'let x = 1; '
+            '} '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_if_condicion_no_bool_genera_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'if 10 { '
+            'let x = 1; '
+            '} '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'condición' in error.descripcion
+            and 'bool' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_while_condicion_bool_valida(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let i = 0; '
+            'while i < 10 { '
+            'let x = 1; '
+            '} '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_while_condicion_no_bool_genera_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'while 10 { '
+            '} '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'while' in error.descripcion
+            and 'bool' in error.descripcion
+            for error in errors.get_all()
+        )
+
+class TestAssignments:
+
+    def test_asignacion_variable_mutable_valida(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x = 20; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_asignacion_variable_inmutable_genera_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x: i32 = 10; '
+            'x = 20; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'inmutable' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_asignacion_variable_no_declarada(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'x = 20; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'no ha sido declarada' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_asignacion_tipo_incompatible(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x = "hola"; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_asignacion_con_expresion_valida(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x = 20 + 5; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_asignacion_rhs_variable_no_declarada(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x = noExiste + 1; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'noExiste' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestCompoundAssignments:
+
+    def test_operadores_compuestos_i32_validos(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 100; '
+            'x += 5; '
+            'x -= 2; '
+            'x *= 3; '
+            'x /= 4; '
+            'x %= 5; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_compuesta_variable_inmutable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x: i32 = 10; '
+            'x += 5; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'inmutable' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_compuesta_variable_no_declarada(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'x += 5; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'no ha sido declarada' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_compuesta_operacion_incompatible(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x += "hola"; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '+' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_compuesta_promocion_no_cabe_en_variable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32 = 10; '
+            'x += 2.5; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'f64' in error.descripcion
+            and 'i32' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_compuesta_f64_valida(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: f64 = 10.0; '
+            'x += 2.5; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+class TestFunctionCalls:
+
+    def test_llamada_funcion_retorna_tipo(self):
+        _, analyzer, errors = _semantic(
+            'fn sumar(a: i32, b: i32) -> i32 { '
+            'return a + b; '
+            '} '
+            'fn main() { '
+            'let resultado = sumar(10, 20); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'i32'
+
+
+    def test_llamada_funcion_declarada_despues(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let resultado = sumar(10, 20); '
+            '} '
+            'fn sumar(a: i32, b: i32) -> i32 { '
+            'return a + b; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        resultado = analyzer.function_envs[
+            'main'
+        ].lookup('resultado')
+
+        assert resultado.tipo == 'i32'
+
+
+    def test_funcion_no_declarada(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'saludar(); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'saludar' in error.descripcion
+            and 'no ha sido declarada' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_cantidad_argumentos_incorrecta(self):
+        _, _, errors = _semantic(
+            'fn suma(a: i32, b: i32) { '
+            '} '
+            'fn main() { '
+            'suma(10); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'suma' in error.descripcion
+            and '2' in error.descripcion
+            and '1' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_demasiados_argumentos(self):
+        _, _, errors = _semantic(
+            'fn suma(a: i32, b: i32) { '
+            '} '
+            'fn main() { '
+            'suma(10, 20, 30); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'suma' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_tipo_argumento_incorrecto(self):
+        _, _, errors = _semantic(
+            'fn mostrar(valor: i32) { '
+            '} '
+            'fn main() { '
+            'mostrar("hola"); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'mostrar' in error.descripcion
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_funcion_sin_retorno_como_sentencia(self):
+        _, _, errors = _semantic(
+            'fn saludar(nombre: String) { '
+            'println!(nombre); '
+            '} '
+            'fn main() { '
+            'saludar(String::from("Ana")); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_argumento_puede_ser_expresion(self):
+        _, _, errors = _semantic(
+            'fn mostrar(valor: i32) { '
+            '} '
+            'fn main() { '
+            'mostrar(10 + 20); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_llamada_recursiva_es_valida(self):
+        _, _, errors = _semantic(
+            'fn identidad(x: i32) -> i32 { '
+            'return identidad(x); '
+            '} '
+            'fn main() { '
+            'let y = identidad(10); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+class TestReturns:
+
+    def test_return_tipo_correcto(self):
+        _, _, errors = _semantic(
+            'fn obtener() -> i32 { '
+            'return 10; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_return_expresion_correcta(self):
+        _, _, errors = _semantic(
+            'fn sumar(a: i32, b: i32) -> i32 { '
+            'return a + b; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_return_tipo_incorrecto(self):
+        _, _, errors = _semantic(
+            'fn obtener() -> i32 { '
+            'return "hola"; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'obtener' in error.descripcion
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_return_vacio_en_funcion_tipificada(self):
+        _, _, errors = _semantic(
+            'fn obtener() -> i32 { '
+            'return; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'obtener' in error.descripcion
+            and 'i32' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_return_vacio_en_funcion_sin_tipo(self):
+        _, _, errors = _semantic(
+            'fn saludar() { '
+            'return; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_return_valor_en_funcion_sin_tipo(self):
+        _, _, errors = _semantic(
+            'fn saludar() { '
+            'return 10; '
+            '} '
+            'fn main() { }'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'saludar' in error.descripcion
+            and 'no debe retornar' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_return_dentro_de_if_conserva_contexto(self):
+        _, _, errors = _semantic(
+            'fn obtener() -> i32 { '
+            'if true { '
+            'return 10; '
+            '} '
+            '} '
+            'fn main() { }'
+        )
+
+        assert not errors.has_errors()
