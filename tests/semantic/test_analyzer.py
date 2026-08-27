@@ -865,6 +865,7 @@ class TestControlConditions:
             for error in errors.get_all()
         )
 
+
 class TestAssignments:
 
     def test_asignacion_variable_mutable_valida(self):
@@ -1041,6 +1042,7 @@ class TestCompoundAssignments:
 
         assert not errors.has_errors()
 
+
 class TestFunctionCalls:
 
     def test_llamada_funcion_retorna_tipo(self):
@@ -1185,6 +1187,7 @@ class TestFunctionCalls:
 
         assert not errors.has_errors()
 
+
 class TestReturns:
 
     def test_return_tipo_correcto(self):
@@ -1280,3 +1283,737 @@ class TestReturns:
         )
 
         assert not errors.has_errors()
+
+
+class TestArrays:
+
+    def test_inferencia_array_i32(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        numeros = analyzer.function_envs[
+            'main'
+        ].lookup('numeros')
+
+        assert numeros.tipo == (
+            'array',
+            'i32',
+            3
+        )
+
+
+    def test_array_tipo_explicito_valido(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros: [i32; 3] = [10, 20, 30]; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        numeros = analyzer.function_envs[
+            'main'
+        ].lookup('numeros')
+
+        assert numeros.tipo == (
+            'array',
+            'i32',
+            3
+        )
+
+
+    def test_array_elementos_diferentes_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let valores = [10, "hola", 20]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'mismo tipo' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_array_longitud_incompatible(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros: [i32; 2] = [10, 20, 30]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and '[i32; 2]' in error.descripcion
+            and '[i32; 3]' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_array_repeat(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [0; 5]; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        numeros = analyzer.function_envs[
+            'main'
+        ].lookup('numeros')
+
+        assert numeros.tipo == (
+            'array',
+            'i32',
+            5
+        )
+
+
+    def test_array_vacio_sin_tipo_error(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = []; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'inferir' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_array_vacio_con_tipo_valido(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros: [i32; 0] = []; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_acceso_array_devuelve_tipo_elemento(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let x = numeros[1]; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        x = analyzer.function_envs[
+            'main'
+        ].lookup('x')
+
+        assert x.tipo == 'i32'
+
+
+    def test_indice_debe_ser_i32(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let x = numeros[1.5]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'índice' in error.descripcion
+            and 'i32' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_indice_fuera_de_limites(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let x = numeros[5]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'límites' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_indice_negativo_fuera_de_limites(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let x = numeros[-1]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'límites' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestSlices:
+
+    def test_slice_valido(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30, 40, 50]; '
+            'let parte = &numeros[1..4]; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        parte = analyzer.function_envs[
+            'main'
+        ].lookup('parte')
+
+        assert parte.tipo == (
+            'slice',
+            'i32'
+        )
+
+
+    def test_slice_fuera_de_limites(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let parte = &numeros[1..5]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'límites' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_slice_inicio_mayor_fin(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'let parte = &numeros[2..1]; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'límites' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestArrayAssignments:
+
+    def test_asignacion_elemento_array_mutable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut numeros = [10, 20, 30]; '
+            'numeros[1] = 50; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_asignacion_elemento_array_inmutable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [10, 20, 30]; '
+            'numeros[1] = 50; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'inmutable' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_asignacion_elemento_tipo_incorrecto(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut numeros = [10, 20, 30]; '
+            'numeros[1] = "hola"; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_compuesta_elemento_array(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut numeros = [10, 20, 30]; '
+            'numeros[1] += 5; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+class TestStructs:
+
+    def test_inferencia_struct(self):
+        _, analyzer, errors = _semantic(
+            'struct Point { '
+            'x: i32, '
+            'y: i32, '
+            '} '
+            'fn main() { '
+            'let p = Point { x: 10, y: 20 }; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        p = analyzer.function_envs[
+            'main'
+        ].lookup('p')
+
+        assert p.tipo == 'Point'
+
+
+    def test_struct_no_declarado(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let p = Point { x: 10 }; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'Point' in error.descripcion
+            and 'no ha sido declarado' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_struct_campo_faltante(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32, y: i32 } '
+            'fn main() { '
+            'let p = Point { x: 10 }; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'y' in error.descripcion
+            and 'Falta' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_struct_campo_inexistente(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let p = Point { x: 10, z: 20 }; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'z' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_struct_tipo_campo_incorrecto(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let p = Point { x: "hola" }; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_struct_campo_repetido_en_init(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let p = Point { x: 1, x: 2 }; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'más de una vez' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_acceso_campo_devuelve_tipo(self):
+        _, analyzer, errors = _semantic(
+            'struct Point { x: i32, y: f64 } '
+            'fn main() { '
+            'let p = Point { x: 10, y: 3.14 }; '
+            'let valor = p.y; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        valor = analyzer.function_envs[
+            'main'
+        ].lookup('valor')
+
+        assert valor.tipo == 'f64'
+
+
+    def test_struct_anidado(self):
+        _, analyzer, errors = _semantic(
+            'struct Point { x: i32, y: i32 } '
+            'struct Rectangle { position: Point } '
+            'fn main() { '
+            'let r = Rectangle { '
+            'position: Point { x: 10, y: 20 } '
+            '}; '
+            'let valor = r.position.x; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        valor = analyzer.function_envs[
+            'main'
+        ].lookup('valor')
+
+        assert valor.tipo == 'i32'
+
+
+    def test_asignacion_campo_mutable(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let mut p = Point { x: 10 }; '
+            'p.x = 20; '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_asignacion_campo_inmutable(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let p = Point { x: 10 }; '
+            'p.x = 20; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'inmutable' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_asignacion_campo_tipo_incorrecto(self):
+        _, _, errors = _semantic(
+            'struct Point { x: i32 } '
+            'fn main() { '
+            'let mut p = Point { x: 10 }; '
+            'p.x = "hola"; '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'i32' in error.descripcion
+            and 'String' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_campo_duplicado_en_struct(self):
+        _, _, errors = _semantic(
+            'struct Point { '
+            'x: i32, '
+            'x: f64, '
+            '} '
+            'fn main() { }'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'x' in error.descripcion
+            and 'más de una vez' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_tipo_struct_desconocido_en_campo(self):
+        _, _, errors = _semantic(
+            'struct Persona { '
+            'direccion: NoExiste, '
+            '} '
+            'fn main() { }'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'NoExiste' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+class TestBuiltins:
+
+    def test_typeof_retorna_string(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = 10; '
+            'let tipo = typeof(x); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        tipo = analyzer.function_envs[
+            'main'
+        ].lookup('tipo')
+
+        assert tipo.tipo == 'String'
+
+
+    def test_typeof_aridad_incorrecta(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'typeof(); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'typeof' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_random_i32(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let x = random(1, 10); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        x = analyzer.function_envs[
+            'main'
+        ].lookup('x')
+
+        assert x.tipo == 'i32'
+
+
+    def test_random_tipo_invalido(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let x = random("a", 10); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'random' in error.descripcion
+            and 'numéricos' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_string_len(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola"); '
+            'let longitud = texto.len(); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        longitud = analyzer.function_envs[
+            'main'
+        ].lookup('longitud')
+
+        assert longitud.tipo == 'i32'
+
+
+    def test_string_contains(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola"); '
+            'let existe = texto.contains("ola"); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        existe = analyzer.function_envs[
+            'main'
+        ].lookup('existe')
+
+        assert existe.tipo == 'bool'
+
+
+    def test_string_replace(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola Mundo"); '
+            'let nuevo = texto.replace("Mundo", "Rust"); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        nuevo = analyzer.function_envs[
+            'main'
+        ].lookup('nuevo')
+
+        assert nuevo.tipo == 'String'
+
+
+    def test_string_split(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola Mundo"); '
+            'let partes = texto.split(" "); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        partes = analyzer.function_envs[
+            'main'
+        ].lookup('partes')
+
+        assert partes.tipo == (
+            'array',
+            'String',
+            None
+        )
+
+
+    def test_uppercase_lowercase(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola"); '
+            'let a = texto.to_uppercase(); '
+            'let b = texto.to_lowercase(); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        env = analyzer.function_envs[
+            'main'
+        ]
+
+        assert env.lookup('a').tipo == 'String'
+        assert env.lookup('b').tipo == 'String'
+
+
+    def test_array_len(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [1, 2, 3]; '
+            'let longitud = numeros.len(); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        longitud = analyzer.function_envs[
+            'main'
+        ].lookup('longitud')
+
+        assert longitud.tipo == 'i32'
+
+
+    def test_array_contains(self):
+        _, analyzer, errors = _semantic(
+            'fn main() { '
+            'let numeros = [1, 2, 3]; '
+            'let existe = numeros.contains(2); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+        existe = analyzer.function_envs[
+            'main'
+        ].lookup('existe')
+
+        assert existe.tipo == 'bool'
+
+
+    def test_reverse_array_mutable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut numeros = [1, 2, 3]; '
+            'numeros.reverse(); '
+            '}'
+        )
+
+        assert not errors.has_errors()
+
+
+    def test_reverse_array_inmutable(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let numeros = [1, 2, 3]; '
+            'numeros.reverse(); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'inmutable' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
+    def test_metodo_no_existe(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let texto = String::from("Hola"); '
+            'texto.no_existe(); '
+            '}'
+        )
+
+        assert any(
+            error.tipo == 'Semántico'
+            and 'no_existe' in error.descripcion
+            for error in errors.get_all()
+        )
+
+
