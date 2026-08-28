@@ -2,14 +2,26 @@ from interpreter.errors import ErrorList
 from interpreter.parser.parser import parse
 from interpreter.semantic.analyzer import SemanticAnalyzer
 from interpreter.runtime.interpreter import Interpreter
+from interpreter.reports.manager import ReportManager
 
 
-def run_source(source_code):
+def run_source(
+    source_code,
+    report_dir=None,
+):
     """
-    Ejecuta el pipeline completo:
-    parser -> semántica -> runtime.
+    Ejecuta:
+        parser -> semántica -> runtime -> reportes
 
-    Devuelve un diccionario útil para la futura API REST.
+    `report_dir` debe apuntar a la carpeta raíz de reportes.
+    Ejemplo:
+        run_source(codigo, report_dir="reports")
+
+    Esto genera:
+        reports/errors/errores.html
+        reports/symbols/tabla_simbolos.html
+        reports/ast/ast.dot
+        reports/ast/ast.svg
     """
 
     errors = ErrorList()
@@ -32,9 +44,7 @@ def run_source(source_code):
             source_code=source_code,
         )
 
-        analyzer.analyze(
-            ast
-        )
+        analyzer.analyze(ast)
 
     if (
         ast is not None
@@ -45,9 +55,20 @@ def run_source(source_code):
             source_code=source_code,
         )
 
-        output = runtime.execute(
-            ast
-        )
+        output = runtime.execute(ast)
+
+    manager = ReportManager(
+        ast=ast,
+        analyzer=analyzer,
+        errors=errors,
+    )
+
+    reports = manager.payload()
+    report_files = (
+        manager.write_all(report_dir)
+        if report_dir is not None
+        else {}
+    )
 
     return {
         'ast': ast,
@@ -55,4 +76,6 @@ def run_source(source_code):
         'runtime': runtime,
         'errors': errors,
         'output': output,
+        'reports': reports,
+        'report_files': report_files,
     }
