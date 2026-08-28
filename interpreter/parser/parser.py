@@ -25,6 +25,9 @@ precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'TIMES', 'DIVIDE', 'MODULO'),
     ('right', 'NOT', 'UMINUS'),
+    # Accesos postfix: obj.metodo(), obj.campo y arr[indice]
+    # deben agruparse antes que +, <, ==, &&, etc.
+    ('left', 'DOT', 'LBRACKET'),
 )
 
 #-------------------------------------------------------------------
@@ -250,6 +253,16 @@ def p_instrucciones_lista(p):
 def p_instrucciones_vacio(p):
     '''instrucciones : '''
     p[0] = []
+
+
+# --- Bloque independiente ---
+# Permite usar { ... } como una instruccion y crear un scope propio.
+def p_instruccion_bloque_independiente(p):
+    '''instruccion : LBRACE instrucciones RBRACE'''
+    p[0] = Block(
+        p[2],
+        *_pos(p, 1)
+    )
 
 
 def p_instruccion_let_falta_identificador(p):
@@ -787,24 +800,24 @@ def p_expresion_arreglo_repetido(p):
 
 
 def p_expresion_array_access(p):
-    '''expresion : expresion LBRACKET expresion RBRACKET'''
+    '''expresion : expresion LBRACKET expresion RBRACKET %prec LBRACKET'''
     p[0] = ArrayAccess(p[1], p[3], *_pos(p, 2))
 
 
 def p_expresion_slice(p):
-    '''expresion : AMPERSAND expresion LBRACKET expresion RANGE expresion RBRACKET'''
+    '''expresion : AMPERSAND expresion LBRACKET expresion RANGE expresion RBRACKET %prec LBRACKET'''
     p[0] = SliceAccess(p[2], p[4], p[6], *_pos(p, 1))
 
 
 # --- Acceso a campos y metodos ---
 
 def p_expresion_method_call(p):
-    '''expresion : expresion DOT IDENTIFIER LPAREN argumentos RPAREN'''
+    '''expresion : expresion DOT IDENTIFIER LPAREN argumentos RPAREN %prec DOT'''
     p[0] = MethodCall(p[1], p[3], p[5], *_pos(p, 3))
 
 
 def p_expresion_field_access(p):
-    '''expresion : expresion DOT IDENTIFIER'''
+    '''expresion : expresion DOT IDENTIFIER %prec DOT'''
     p[0] = FieldAccess(p[1], p[3], *_pos(p, 3))
 
 

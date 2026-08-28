@@ -521,6 +521,18 @@ class SemanticAnalyzer:
                     env
                 )
 
+            elif isinstance(instruction, Block):
+                block_env = env.create_child(
+                    self._new_scope_name(
+                        env,
+                        'block'
+                    )
+                )
+                self._analyze_block(
+                    instruction,
+                    block_env
+                )
+
             elif isinstance(instruction, ExpressionStmt):
                 self._infer_type(
                     instruction.expresion,
@@ -938,21 +950,40 @@ class SemanticAnalyzer:
                 self._fragmento(node)
             )
 
+        # Si no se proporcionó un valor, algunos tipos primitivos
+        # poseen un valor por defecto definido por OxigenScript.
+        has_default = False
+        default_value = None
+
+        if node.valor is None:
+            has_default, default_value = self._default_value_for_type(
+                final_type
+            )
+
+        symbol_value = self._literal_value(node.valor)
+
+        if node.valor is None and has_default:
+            symbol_value = default_value
+
         symbol = Symbol(
             nombre=node.nombre,
             tipo=final_type,
             categoria='variable',
             mutable=node.mutable,
-            valor=self._literal_value(node.valor),
+            valor=symbol_value,
             linea=node.linea,
             columna=node.columna
         )
 
-        # Una variable solo se considera inicializada cuando existe
-        # un valor cuyo tipo pudo determinarse correctamente.
+        # Una declaración con valor explícito queda inicializada.
+        # También quedan inicializados los tipos que tienen valor
+        # por defecto: i32, f64, bool y String.
         symbol.inicializado = (
-            node.valor is not None
-            and inferred_type is not None
+            (
+                node.valor is not None
+                and inferred_type is not None
+            )
+            or has_default
         )
 
         # OxigenScript permite shadowing de variables.
@@ -2889,6 +2920,25 @@ class SemanticAnalyzer:
                 )
 
         return str(tipo)
+
+
+    def _default_value_for_type(self, tipo):
+        """
+        Devuelve (tiene_default, valor_default) para tipos que
+        OxigenScript inicializa automáticamente.
+        """
+
+        defaults = {
+            'i32': 0,
+            'f64': 0.0,
+            'bool': False,
+            'String': '',
+        }
+
+        if tipo in defaults:
+            return True, defaults[tipo]
+
+        return False, None
 
 
     def _literal_value(self, expression):

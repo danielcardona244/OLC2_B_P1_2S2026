@@ -179,38 +179,30 @@ class TestMatchSemantic:
 
 class TestInitializationSemantic:
 
-    def test_variable_no_inicializada_no_puede_usarse(self):
-        _, _, errors = _semantic(
+    def test_tipos_primitivos_con_default_se_pueden_usar(self):
+        _, analyzer, errors = _semantic(
             'fn main() { '
-            'let x: i32; '
-            'println!(x); '
-            '}'
-        )
-
-        assert any(
-            error.tipo == 'Semántico'
-            and 'x' in error.descripcion
-            and 'no ha sido inicializada' in error.descripcion
-            for error in errors.get_all()
-        )
-
-    def test_primera_asignacion_inicializa_inmutable(self):
-        _, _, errors = _semantic(
-            'fn main() { '
-            'let x: i32; '
-            'x = 10; '
-            'println!(x); '
+            'let a: i32; '
+            'let b: f64; '
+            'let c: bool; '
+            'let d: String; '
+            'println!(a, b, c, d); '
             '}'
         )
 
         assert not errors.has_errors()
 
-    def test_segunda_asignacion_inmutable_error(self):
+        env = analyzer.function_envs['main']
+        assert env.lookup('a').valor == 0
+        assert env.lookup('b').valor == 0.0
+        assert env.lookup('c').valor is False
+        assert env.lookup('d').valor == ''
+
+    def test_asignacion_a_inmutable_con_default_es_error(self):
         _, _, errors = _semantic(
             'fn main() { '
             'let x: i32; '
             'x = 10; '
-            'x = 20; '
             '}'
         )
 
@@ -220,6 +212,17 @@ class TestInitializationSemantic:
             and 'inmutable' in error.descripcion
             for error in errors.get_all()
         )
+
+    def test_mutable_con_default_puede_asignarse(self):
+        _, _, errors = _semantic(
+            'fn main() { '
+            'let mut x: i32; '
+            'x = 10; '
+            'println!(x); '
+            '}'
+        )
+
+        assert not errors.has_errors()
 
     def test_inferencia_diferida_sin_tipo(self):
         _, analyzer, errors = _semantic(
@@ -234,7 +237,7 @@ class TestInitializationSemantic:
         assert analyzer.function_envs['main'].lookup('x').tipo == 'i32'
         assert analyzer.function_envs['main'].lookup('y').tipo == 'i32'
 
-    def test_compuesta_sobre_no_inicializada_error(self):
+    def test_compuesta_sobre_mutable_con_default_es_valida(self):
         _, _, errors = _semantic(
             'fn main() { '
             'let mut x: i32; '
@@ -242,12 +245,7 @@ class TestInitializationSemantic:
             '}'
         )
 
-        assert any(
-            error.tipo == 'Semántico'
-            and 'x' in error.descripcion
-            and 'no ha sido inicializada' in error.descripcion
-            for error in errors.get_all()
-        )
+        assert not errors.has_errors()
 
     def test_parametro_se_considera_inicializado(self):
         _, _, errors = _semantic(
