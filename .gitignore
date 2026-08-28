@@ -17,3 +17,6 @@ reports/*.pdf
 
 parser.out
 .pytest_cache/
+
+*.py[cod]
+
