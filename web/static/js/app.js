@@ -35,6 +35,7 @@
 
     const astEmpty = document.getElementById('ast-empty');
     const astFrame = document.getElementById('ast-frame');
+    const openAstBtn = document.getElementById('open-ast-btn');
 
     let currentFileName = 'main.ox';
     let dirty = false;
@@ -531,6 +532,27 @@
             ),
         );
     }
+    
+    openAstBtn.addEventListener(
+        'click',
+        () => {
+            if (
+                !hasExecuted
+                || astFrame.classList.contains('hidden')
+            ) {
+                consoleOutput.textContent = (
+                    'Primero ejecuta un programa válido para generar el AST.'
+                );
+
+                return;
+            }
+
+            window.open(
+                `/api/reports/ast/?t=${Date.now()}`,
+                '_blank',
+            );
+        },
+    );
 
     window.addEventListener(
         'keydown',

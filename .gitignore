@@ -20,3 +20,15 @@ parser.out
 
 *.py[cod]
 
+
+# Django local
+db.sqlite3
+
+# Reportes generados automáticamente
+reports/
+
+# Django local
+db.sqlite3
+
+# Reportes generados automáticamente
+/reports/

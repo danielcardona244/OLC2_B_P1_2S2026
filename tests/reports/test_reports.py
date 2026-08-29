@@ -164,3 +164,37 @@ class TestReportManager:
         assert 'Program' in reports['ast_dot']
         assert 'FunctionDecl' in reports['ast_dot']
         assert 'StructDecl' in reports['ast_dot']
+
+def test_tabla_simbolos_se_genera_con_error_lexico_recuperable():
+    from interpreter.runtime.runner import run_source
+
+    code = '''
+fn main() {
+    let x: i32 = 10;
+
+    @
+
+    let y: i32 = 20;
+}
+'''
+
+    result = run_source(code)
+
+    assert result['errors'].has_errors()
+
+    # Existe analizador semántico aunque haya error léxico.
+    assert result['analyzer'] is not None
+
+    symbols = result['reports']['symbols']
+
+    identifiers = [
+        symbol['identificador']
+        for symbol in symbols
+    ]
+
+    assert 'x' in identifiers
+    assert 'y' in identifiers
+
+    # Un programa con errores no debe ejecutarse.
+    assert result['runtime'] is None
+    assert result['output'] == ''

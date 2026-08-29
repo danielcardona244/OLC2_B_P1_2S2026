@@ -406,6 +406,29 @@ td code {
     background: white;
 }
 
+.ast-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-soft);
+}
+
+.ast-open-btn {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: #21262d;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.ast-open-btn:hover {
+    background: #2d333b;
+    border-color: #57606a;
+}
+
 .hidden {
     display: none !important;
 }

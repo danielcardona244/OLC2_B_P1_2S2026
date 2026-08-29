@@ -71,3 +71,10 @@ def test_gui_muestra_puerto_oficial_7810():
     html = Client().get('/').content.decode('utf-8')
 
     assert '127.0.0.1:7810' in html
+
+
+def test_gui_tiene_boton_abrir_ast():
+    html = Client().get('/').content.decode('utf-8')
+
+    assert 'id="open-ast-btn"' in html
+    assert 'Abrir AST en pestaña' in html

@@ -35,10 +35,15 @@ def run_source(
     runtime = None
     output = ''
 
-    if (
-        ast is not None
-        and not errors.has_errors()
-    ):
+    # ---------------------------------------------------------
+    # ANÁLISIS SEMÁNTICO
+    #
+    # Si el parser logró recuperar un AST, intentamos continuar
+    # con semántica aunque existan errores léxicos/sintácticos.
+    #
+    # Esto permite construir una tabla de símbolos parcial.
+    # ---------------------------------------------------------
+    if ast is not None:
         analyzer = SemanticAnalyzer(
             errors=errors,
             source_code=source_code,
@@ -46,6 +51,12 @@ def run_source(
 
         analyzer.analyze(ast)
 
+    # ---------------------------------------------------------
+    # EJECUCIÓN
+    #
+    # El runtime únicamente se ejecuta si todo el análisis
+    # terminó sin errores.
+    # ---------------------------------------------------------
     if (
         ast is not None
         and not errors.has_errors()
@@ -64,6 +75,7 @@ def run_source(
     )
 
     reports = manager.payload()
+
     report_files = (
         manager.write_all(report_dir)
         if report_dir is not None
