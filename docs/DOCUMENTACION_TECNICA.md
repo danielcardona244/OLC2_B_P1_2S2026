@@ -1,54 +1,161 @@
-# Documentación técnica — OxigenScript
+# Documentación Técnica — OxigenScript IDE
 
-## 1. Objetivo
+## 1. Descripción general
 
-OxigenScript es un intérprete web para un lenguaje con sintaxis inspirada en Rust. El sistema recibe código fuente, realiza análisis léxico, sintáctico y semántico, construye un AST, ejecuta el programa y genera reportes.
+OxigenScript IDE es un intérprete web desarrollado en Python para procesar programas escritos en OxigenScript. La solución implementa análisis léxico, análisis sintáctico, construcción de AST, análisis semántico, ejecución y generación de reportes.
 
-La solución utiliza una arquitectura monolítica cliente/servidor: Django sirve la interfaz y expone una API REST en Python.
+La aplicación utiliza una arquitectura monolítica cliente/servidor con Django.
 
-## 2. Tecnologías
+---
 
-| Componente | Tecnología |
+## 2. Tecnologías utilizadas
+
+| Área | Tecnología |
 |---|---|
 | Lenguaje principal | Python |
-| Lexer / Parser | PLY |
+| Análisis léxico | PLY Lex |
+| Análisis sintáctico | PLY Yacc |
 | Backend web | Django |
-| Frontend | HTML, CSS y JavaScript |
+| Frontend | HTML, CSS, JavaScript |
 | AST gráfico | Graphviz |
 | Pruebas | pytest |
 | Sistema operativo | Linux |
 
-## 3. Arquitectura
+---
+
+## 3. Arquitectura general
 
 ```text
-Código fuente
-    ↓
+GUI
+ ↓
+API Django
+ ↓
 Lexer
-    ↓
+ ↓
 Parser
-    ↓
+ ↓
 AST
-    ↓
+ ↓
 Análisis semántico
-    ↓
-Runtime / Intérprete
-    ↓
-Salida + Reportes
-    ↓
-API REST
-    ↓
-GUI Web
+ ↓
+Runtime
+ ↓
+Reportes
+ ↓
+Respuesta a GUI
 ```
 
-## 4. Gramática formal resumida
+Diagramas complementarios:
+
+- [Arquitectura general](diagrams/arquitectura_general.svg)
+- [Clases principales del backend](diagrams/clases_backend.svg)
+- [Jerarquía del AST](diagrams/clases_ast.md)
+
+
+---
+
+## 4. Estructura del proyecto
+
+```text
+OLC2_B_P1_2S2026/
+├── interpreter/
+│   ├── ast/
+│   ├── lexer/
+│   ├── parser/
+│   ├── semantic/
+│   ├── runtime/
+│   └── reports/
+├── tests/
+│   ├── fixtures/
+│   ├── integration/
+│   ├── lexer/
+│   ├── parser/
+│   ├── semantic/
+│   ├── runtime/
+│   ├── reports/
+│   └── web/
+├── web/
+│   ├── api/
+│   ├── static/
+│   └── templates/
+├── docs/
+├── manage.py
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 5. Analizador léxico
+
+Archivo principal:
+
+```text
+interpreter/lexer/lexer.py
+```
+
+Responsabilidades:
+
+- palabras reservadas;
+- identificadores;
+- enteros y flotantes;
+- strings y chars;
+- operadores;
+- delimitadores;
+- comentarios;
+- línea y columna;
+- errores léxicos.
+
+Tipos principales:
+
+```text
+i32
+f64
+bool
+char
+String
+[T; N]
+```
+
+---
+
+## 6. Analizador sintáctico
+
+Archivo:
+
+```text
+interpreter/parser/parser.py
+```
+
+Responsabilidades:
+
+- producciones PLY;
+- precedencia;
+- construcción del AST;
+- recuperación ante errores sintácticos;
+- integración con `ErrorList`.
+
+Construcciones soportadas:
+
+- funciones;
+- structs;
+- variables;
+- asignaciones;
+- expresiones;
+- `if`, `while`, `loop`, `match`;
+- `return`, `break`, `continue`;
+- arrays y slices;
+- llamadas a funciones y métodos.
+
+---
+
+## 7. Gramática formal resumida
 
 ### Identificadores
 
 ```text
-<identifier> ::= ( <letter> | "_" ) ( <letter> | <digit> | "_" )*
+<identifier> ::= (<letter> | "_") (<letter> | <digit> | "_")*
 ```
-
-Los identificadores son case-sensitive.
 
 ### Tipos
 
@@ -80,47 +187,109 @@ Los identificadores son case-sensitive.
 ```text
 <function_decl> ::= fn <identifier> "(" <param_list_opt> ")" <return_opt> <block>
 <return_opt> ::= "->" <type> | ε
-<param_list> ::= <param> | <param> "," <param_list>
 <param> ::= <identifier> ":" <type>
 ```
 
-El punto de entrada es una única función `main`.
-
-### Bloques y control de flujo
+### Bloques
 
 ```text
 <block> ::= "{" <stmt_list> "}"
+```
+
+### Control
+
+```text
 <if_stmt> ::= if <expression> <block> <else_opt>
 <while_stmt> ::= while <expression> <block>
 <loop_stmt> ::= <label_opt> loop <block>
 <match_stmt> ::= match <expression> "{" <match_arms> "}"
 ```
 
-También se implementan `break`, `continue` y `return`.
+---
 
-### Expresiones
+## 8. AST
 
-Se soportan operadores aritméticos, relacionales, lógicos, unarios, llamadas a funciones y métodos, acceso a arreglos/slices y acceso a campos de structs.
+Archivo:
 
-## 5. Análisis léxico
+```text
+interpreter/ast/nodes.py
+```
 
-El lexer reconoce palabras reservadas, identificadores, enteros, decimales, strings, chars, operadores, delimitadores, comentarios, etiquetas y `println!`.
+Nodos principales:
 
-Los errores registran tipo, descripción, línea, columna y fragmento.
+```text
+Program
+FunctionDecl
+Param
+StructDecl
+StructField
+VarDeclaration
+Assignment
+CompoundAssignment
+IfStmt
+WhileStmt
+LoopStmt
+MatchStmt
+MatchArm
+Block
+ReturnStmt
+BreakStmt
+ContinueStmt
+ExpressionStmt
+Literal
+Identifier
+BinaryOp
+UnaryOp
+Comparison
+LogicalOp
+ArrayLiteral
+ArrayRepeat
+ArrayAccess
+SliceAccess
+FieldAccess
+FunctionCall
+MethodCall
+StringFrom
+StringNew
+PrintlnCall
+StructInit
+```
 
-## 6. Parser y AST
+El AST es utilizado por el análisis semántico, el runtime y el reporte Graphviz.
 
-El parser utiliza PLY y construye clases de AST como:
+---
 
-`Program`, `FunctionDecl`, `StructDecl`, `VarDeclaration`, `Assignment`, `IfStmt`, `WhileStmt`, `LoopStmt`, `MatchStmt`, `Block`, `ReturnStmt`, `BreakStmt`, `ContinueStmt`, `Literal`, `Identifier`, `BinaryOp`, `UnaryOp`, `Comparison`, `LogicalOp`, `ArrayLiteral`, `ArrayAccess`, `SliceAccess`, `FunctionCall`, `MethodCall`, `StructInit` y `FieldAccess`.
+## 9. Análisis semántico
 
-## 7. Análisis semántico
+Módulos:
 
-Valida declaraciones, tipos, mutabilidad, scopes, parámetros, retornos, llamadas, arrays, slices, structs, condiciones booleanas, control de transferencia y existencia/unicidad de `main`.
+```text
+interpreter/semantic/analyzer.py
+interpreter/semantic/environment.py
+interpreter/semantic/symbol.py
+interpreter/semantic/symbol_table.py
+```
 
-Los entornos se organizan padre/hijo. Los símbolos locales son visibles en subámbitos, pero no hacia fuera.
+Valida:
 
-### Tabla de símbolos
+- declaraciones;
+- existencia de identificadores;
+- mutabilidad;
+- compatibilidad de tipos;
+- scopes y shadowing;
+- parámetros;
+- llamadas a funciones;
+- retornos;
+- arrays y slices;
+- structs;
+- control de flujo;
+- existencia y unicidad de `main`.
+
+---
+
+## 10. Tabla de símbolos
+
+Registra variables, parámetros, funciones y structs.
 
 Columnas:
 
@@ -134,17 +303,61 @@ Línea
 Valor
 ```
 
-El campo Ámbito indica dónde fue declarado el símbolo.
+Con errores recuperables, el análisis semántico puede conservar una tabla parcial.
 
-## 8. Runtime
+---
 
-El runtime recorre el AST y ejecuta el programa iniciando en `main`.
+## 11. Runtime
 
-Implementa variables, entornos léxicos, control de flujo, funciones, arrays/slices, structs, operadores, `println!` y builtins.
+Módulos:
 
-`return`, `break` y `continue` utilizan señales internas para propagar cambios de flujo.
+```text
+interpreter/runtime/environment.py
+interpreter/runtime/interpreter.py
+interpreter/runtime/runner.py
+interpreter/runtime/signals.py
+interpreter/runtime/value.py
+```
 
-## 9. Funciones embebidas
+Responsabilidades:
+
+- registrar funciones y structs;
+- localizar `main`;
+- ejecutar instrucciones;
+- evaluar expresiones;
+- administrar scopes en ejecución;
+- manejar variables y mutabilidad;
+- producir salida de consola.
+
+---
+
+## 12. Señales de transferencia
+
+Para implementar `return`, `break` y `continue` se utilizan señales internas que permiten transferir el control entre nodos y ciclos anidados.
+
+---
+
+## 13. Operaciones y builtins
+
+Aritméticos:
+
+```text
++ - * / %
+```
+
+Relacionales:
+
+```text
+== != > >= < <=
+```
+
+Lógicos:
+
+```text
+&& || !
+```
+
+Funciones/métodos:
 
 ```text
 println!
@@ -159,15 +372,88 @@ to_lowercase
 reverse
 ```
 
-## 10. Reportes
+---
 
-- Errores en HTML.
-- Tabla de símbolos en HTML.
-- AST en DOT y SVG con Graphviz.
+## 14. Manejo de errores
 
-Los archivos de `reports/` son generados automáticamente y no se versionan.
+Los errores se centralizan en `ErrorList` y almacenan:
 
-## 11. API REST
+- tipo;
+- descripción;
+- línea;
+- columna;
+- fragmento.
+
+Tipos:
+
+```text
+Léxico
+Sintáctico
+Semántico
+```
+
+El sistema intenta recuperarse ante errores no críticos para continuar el análisis cuando sea seguro.
+
+---
+
+## 15. Pipeline principal
+
+Archivo:
+
+```text
+interpreter/runtime/runner.py
+```
+
+Flujo:
+
+```text
+1. crear ErrorList
+2. parsear código
+3. si existe AST:
+      ejecutar análisis semántico
+4. si existe AST y no hay errores:
+      ejecutar runtime
+5. generar reportes
+6. devolver resultado
+```
+
+Esto permite generar símbolos parciales ante errores recuperables sin ejecutar un programa inválido.
+
+---
+
+## 16. Reportes
+
+Módulos:
+
+```text
+interpreter/reports/common.py
+interpreter/reports/error_report.py
+interpreter/reports/symbol_report.py
+interpreter/reports/ast_report.py
+interpreter/reports/manager.py
+```
+
+Salidas:
+
+```text
+reports/errors/errores.html
+reports/symbols/tabla_simbolos.html
+reports/ast/ast.dot
+reports/ast/ast.svg
+```
+
+---
+
+## 17. API REST
+
+Módulos:
+
+```text
+web/api/views.py
+web/api/urls.py
+```
+
+Endpoints:
 
 ```text
 GET  /api/health/
@@ -177,66 +463,119 @@ GET  /api/reports/symbols/
 GET  /api/reports/ast/
 ```
 
-Ejemplo de solicitud:
+---
 
-```json
-{
-  "code": "fn main() { println!(\"Hola\"); }"
-}
-```
+## 18. GUI
 
-## 12. GUI
-
-Incluye Nuevo, Abrir, Guardar, Ejecutar y Reportes; editor con números de línea; consola; pestañas de Errores, Tabla de símbolos y AST.
-
-Atajos:
+Archivos:
 
 ```text
-Ctrl + S
-Ctrl + O
-Ctrl + Enter
+web/templates/index.html
+web/static/css/app.css
+web/static/js/app.js
+web/views.py
+web/urls.py
 ```
 
-## 13. Generación de código a bajo nivel
+Funciones:
 
-La implementación es un intérprete, no un compilador que emite ensamblador o código máquina.
+- editar;
+- abrir;
+- guardar;
+- ejecutar;
+- mostrar consola;
+- mostrar errores;
+- mostrar símbolos;
+- mostrar AST;
+- abrir AST en otra pestaña.
 
-No se genera código de bajo nivel como producto final. La representación intermedia es el AST, y el runtime evalúa directamente sus nodos.
+---
 
-## 14. Decisiones de diseño
+## 19. Generación de código a bajo nivel
 
-- AST mediante jerarquía de clases.
-- Scopes con entornos encadenados.
-- Errores acumulables.
-- Separación entre semántica y runtime.
-- Reportes desacoplados del intérprete.
-- API REST separada de la GUI.
+OxigenScript fue implementado como **intérprete**, no como compilador que emite código máquina o ensamblador.
 
-## 15. Desafíos
+Por ello, la representación intermedia utilizada es el AST y el runtime evalúa directamente sus nodos.
 
-- precedencia y postfix;
-- recuperación de errores sintácticos;
-- scopes y shadowing;
-- tipos estáticos e inferencia;
-- valores por defecto;
-- loops etiquetados;
-- arrays/slices y límites;
-- structs anidados;
-- propagación de retorno;
-- cortocircuito lógico;
-- generación Graphviz;
-- integración Django.
+---
 
-## 16. Pruebas
+## 20. Decisiones de diseño
+
+- AST con clases propias.
+- scopes mediante entornos enlazados.
+- lista compartida de errores.
+- separación entre semántica y runtime.
+- reportes desacoplados del intérprete.
+- GUI desacoplada mediante API REST.
+
+---
+
+## 21. Correcciones finales de integración
+
+Durante la estabilización final se incorporaron:
+
+- corrección de la ruta principal `/` en Django;
+- mejoras en la integración GUI/API;
+- apertura del AST en pestaña independiente;
+- mejora visual del botón del AST;
+- generación de tabla de símbolos parcial con errores recuperables;
+- bloqueo del runtime cuando existen errores;
+- pruebas adicionales de reportes y GUI.
+
+---
+
+## 22. Pruebas
+
+Suite:
+
+```text
+tests/lexer/
+tests/parser/
+tests/semantic/
+tests/runtime/
+tests/reports/
+tests/web/
+tests/integration/
+```
+
+Fixture amplio:
+
+```text
+tests/fixtures/prueba_auxiliar.ox
+```
+
+Comando:
 
 ```bash
 python -m pytest -v
 ```
 
-La suite cubre lexer, parser, semántica, runtime, reportes, API, GUI e integración.
-
-El fixture de prueba amplia es:
+Estado alcanzado durante la estabilización final:
 
 ```text
-tests/fixtures/prueba_auxiliar.ox
+364 passed
 ```
+
+---
+
+## 23. Desafíos principales
+
+- precedencia y postfix;
+- recuperación sintáctica;
+- scopes y shadowing;
+- inferencia y validación de tipos;
+- valores por defecto;
+- loops etiquetados;
+- arrays y slices;
+- structs anidados;
+- propagación de `return`;
+- cortocircuito lógico;
+- generación Graphviz;
+- integración Django;
+- conservación de información semántica después de errores recuperables.
+
+---
+
+## 24. Conclusión
+
+OxigenScript IDE implementa un pipeline completo desde el código fuente hasta la ejecución y generación de reportes. Su separación modular entre lexer, parser, AST, semántica, runtime, reportes y capa web facilita el mantenimiento, las pruebas y la extensión del sistema.

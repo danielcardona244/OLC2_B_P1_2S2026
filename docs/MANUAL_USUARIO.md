@@ -1,132 +1,158 @@
-# Manual de Usuario — OxigenScript
+# Manual de Usuario — OxigenScript IDE
 
-## 1. Instalación
+## 1. Introducción
+
+**OxigenScript IDE** es una aplicación web para escribir, abrir, guardar, analizar y ejecutar programas escritos en OxigenScript. La interfaz integra en una sola pantalla el editor de código, la consola de salida y los reportes generados por el intérprete.
+
+La herramienta permite:
+
+- crear y editar código OxigenScript;
+- abrir archivos `.ox` o `.txt`;
+- guardar el contenido del editor;
+- ejecutar el programa;
+- visualizar errores léxicos, sintácticos y semánticos;
+- consultar la tabla de símbolos;
+- visualizar el AST generado con Graphviz;
+- abrir el AST en una pestaña independiente para facilitar su inspección.
+
+---
+
+## 2. Requisitos
+
+Se requiere:
+
+- sistema operativo Linux;
+- Python 3.12 o compatible;
+- `venv`;
+- dependencias incluidas en `requirements.txt`;
+- Graphviz;
+- navegador web moderno.
+
+Para instalar Graphviz en Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install graphviz
+```
+
+Para verificar la instalación:
+
+```bash
+dot -V
+```
+
+---
+
+## 3. Instalación
+
+Clonar el repositorio:
 
 ```bash
 git clone https://github.com/danielcardona244/OLC2_B_P1_2S2026.git
 cd OLC2_B_P1_2S2026
+```
 
+Crear el entorno virtual:
+
+```bash
 python3 -m venv .venv
+```
+
+Activarlo:
+
+```bash
 source .venv/bin/activate
+```
 
-sudo apt update
-sudo apt install graphviz
+Instalar dependencias:
 
+```bash
 pip install -r requirements.txt
 ```
 
-## 2. Iniciar
+---
+
+## 4. Iniciar la aplicación
+
+Ejecutar:
 
 ```bash
 python manage.py runserver 127.0.0.1:7810
 ```
 
-Abrir:
+Abrir en el navegador:
 
 ```text
 http://127.0.0.1:7810/
 ```
 
-## 3. Interfaz
+El proyecto utiliza el puerto **7810**.
 
-![Interfaz de OxigenScript](images/gui_ejecucion.png)
+---
 
-La pantalla contiene barra de herramientas, editor, consola y panel de reportes.
+## 5. Interfaz principal
 
-## 4. Nuevo
+La interfaz está compuesta por:
 
-Presionar **Nuevo** para limpiar el editor y comenzar un archivo.
+1. barra superior de acciones;
+2. editor de código;
+3. consola;
+4. panel de reportes;
+5. barra de estado.
 
-## 5. Abrir
+### 5.1 Botones principales
 
-Presionar **Abrir** y seleccionar un `.ox` o `.txt`.
+![Botones principales](images/05_botones_principales.png)
 
-Atajo:
+**Figura 1. Botones principales de OxigenScript IDE.**
+
+Los botones disponibles son:
+
+- **Nuevo:** crea un archivo nuevo en el editor.
+- **Abrir:** permite seleccionar un archivo del sistema.
+- **Guardar:** descarga o guarda el contenido actual del editor.
+- **Ejecutar:** envía el código al intérprete.
+- **Reportes:** permite acceder a los reportes generados.
+
+Atajos:
 
 ```text
-Ctrl + O
+Ctrl + O       Abrir
+Ctrl + S       Guardar
+Ctrl + Enter   Ejecutar
 ```
 
-## 6. Editar
+---
 
-El editor muestra numeración de líneas y posición de línea/columna.
+## 6. Crear un archivo nuevo
 
-Ejemplo:
+Presionar **Nuevo**. El editor vuelve a un programa base similar a:
 
 ```rust
 fn main() {
-    let x: i32 = 10;
-    let y: i32 = 20;
-    println!("{}", x + y);
+    println!("Hola, OxigenScript!");
 }
 ```
 
-## 7. Guardar
+---
 
-Presionar **Guardar**.
+## 7. Abrir un archivo
 
-Atajo:
+Presionar **Abrir**.
 
-```text
-Ctrl + S
-```
+![Abrir archivo](images/06_abrir_archivo.png)
 
-## 8. Ejecutar
+**Figura 2. Selección de un archivo `.ox`.**
 
-Presionar **Ejecutar**.
+Se recomienda trabajar con archivos `.ox`.
 
-Atajo:
+---
 
-```text
-Ctrl + Enter
-```
+## 8. Editar código
 
-Flujo:
+El editor muestra numeración de líneas, posición actual de línea y columna, nombre del archivo e indicador de cambios sin guardar.
 
-```text
-Lexer → Parser → AST → Semántica → Runtime → Reportes
-```
-
-## 9. Consola
-
-Muestra la salida de `println!`, el estado y el tiempo de ejecución.
-
-## 10. Errores
-
-La pestaña **Errores** muestra:
-
-```text
-No.
-Tipo
-Descripción
-Línea
-Columna
-Fragmento
-```
-
-## 11. Tabla de símbolos
-
-![Tabla de símbolos](images/tabla_simbolos.png)
-
-Columnas:
-
-```text
-No.
-Identificador
-Categoría
-Tipo
-Ámbito
-Línea
-Valor
-```
-
-`Ámbito` indica el scope donde fue declarado el símbolo.
-
-## 12. AST
-
-La pestaña **AST** muestra la representación gráfica generada con Graphviz.
-
-## 13. Ejemplo
+Ejemplo:
 
 ```rust
 fn sumar(a: i32, b: i32) -> i32 {
@@ -139,44 +165,213 @@ fn main() {
 }
 ```
 
+---
+
+## 9. Guardar código
+
+Presionar **Guardar**.
+
+![Guardar archivo](images/07_guardar_archivo.png)
+
+**Figura 3. Guardado de un programa OxigenScript.**
+
+---
+
+## 10. Ejecutar un programa
+
+Presionar **Ejecutar** o utilizar `Ctrl + Enter`.
+
+Flujo:
+
+```text
+Código fuente
+    ↓
+Lexer
+    ↓
+Parser
+    ↓
+AST
+    ↓
+Análisis semántico
+    ↓
+Runtime
+    ↓
+Reportes
+```
+
+Cuando el programa no contiene errores bloqueantes, el runtime ejecuta `main`.
+
+---
+
+## 11. Consola
+
+La consola muestra salida de `println!`, cantidad y detalle de errores, estado de ejecución y tiempo empleado.
+
+![Consola con errores](images/02_consola_errores.png)
+
+**Figura 4. Consola mostrando errores detectados.**
+
+---
+
+## 12. Manejo de errores
+
+OxigenScript IDE registra errores **léxicos**, **sintácticos** y **semánticos**.
+
+### 12.1 Léxico
+
+```rust
+@
+```
+
+### 12.2 Sintáctico
+
+```rust
+bandera {
+    println!("Error");
+}
+```
+
+### 12.3 Semántico
+
+```rust
+println!("{}", variable_no_declarada);
+```
+
+La aplicación intenta continuar el análisis cuando el error es recuperable, por lo que puede reportar varios errores en una misma corrida.
+
+![Interfaz con errores](images/01_interfaz_errores.png)
+
+**Figura 5. Ejecución con errores de distintos tipos.**
+
+---
+
+## 13. Reporte de errores
+
+La pestaña **Errores** muestra número, tipo, descripción, línea, columna y fragmento.
+
+![Reporte de errores](images/03_reporte_errores.png)
+
+**Figura 6. Reporte de errores dentro de la GUI.**
+
+---
+
+## 14. Tabla de símbolos
+
+La pestaña **Tabla de símbolos** muestra:
+
+```text
+No.
+Identificador
+Categoría
+Tipo
+Ámbito
+Línea
+Valor
+```
+
+El campo **Ámbito** identifica el scope donde fue declarado el símbolo.
+
+Con errores recuperables, el analizador puede producir una tabla parcial con los símbolos que sí pudo reconocer.
+
+![Tabla de símbolos parcial](images/04_tabla_simbolos_parcial.png)
+
+**Figura 7. Tabla de símbolos parcial en presencia de errores.**
+
+---
+
+## 15. AST
+
+La pestaña **AST** muestra el Árbol de Sintaxis Abstracta construido por el parser.
+
+Existe el botón **Abrir AST en pestaña ↗** para facilitar la visualización.
+
+![AST con botón externo](images/08_ast_boton_externo.png)
+
+**Figura 8. Visualización del AST con apertura externa.**
+
+En la pestaña independiente se puede usar el zoom del navegador:
+
+```text
+Ctrl + +       Acercar
+Ctrl + -       Alejar
+Ctrl + 0       Restablecer
+```
+
+---
+
+## 16. Ejecución válida
+
+```rust
+fn sumar(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+fn main() {
+    let resultado: i32 = sumar(10, 5);
+    println!("Resultado: {}", resultado);
+}
+```
+
 Salida:
 
 ```text
-Resultado: 30
+Resultado: 15
 ```
 
-## 14. Prueba completa
+---
 
-Abrir desde la GUI:
+## 17. Archivo de prueba del auxiliar
+
+El proyecto incluye:
 
 ```text
 tests/fixtures/prueba_auxiliar.ox
 ```
 
-Ejecutarlo y revisar consola, errores, tabla de símbolos y AST.
+Para probarlo:
 
-## 15. Problemas comunes
+1. iniciar el servidor;
+2. abrir la GUI;
+3. presionar **Abrir**;
+4. seleccionar `prueba_auxiliar.ox`;
+5. ejecutar;
+6. revisar consola, errores, símbolos y AST.
 
-Verificar Django:
+---
+
+## 18. Solución de problemas
+
+### Django no inicia
 
 ```bash
+source .venv/bin/activate
 python manage.py check
 ```
 
-Verificar Graphviz:
+### AST no disponible
 
 ```bash
 dot -V
 ```
 
-Ejecutar pruebas:
+### Puerto ocupado
 
 ```bash
-python -m pytest -v
+python manage.py runserver 127.0.0.1:7811
 ```
 
-Para cerrar el servidor:
+---
+
+## 19. Cerrar la aplicación
+
+En la terminal del servidor:
 
 ```text
 Ctrl + C
 ```
+
+---
+
+## 20. Conclusión
+
+OxigenScript IDE integra edición, análisis, ejecución y reportes dentro de una misma interfaz, facilitando tanto la prueba del lenguaje como la depuración de errores y la inspección del AST y la tabla de símbolos.
